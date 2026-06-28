@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+<title>What Kind of Sky Traveler Are You?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   BALLOONS & SKY — single-file personality quiz
+   ============================================================ */
+
+:root{
+  /* sky gradient stops — animated via JS through these props */
+  --sky-top: #5bb8f5;
+  --sky-mid: #c9e8f7;
+  --sky-low: #f0f8ff;
+
+  /* mood tint blended over the sky (calm/adventure/dreamy) */
+  --mood-r: 0;
+  --mood-g: 0;
+  --mood-b: 0;
+  --mood-a: 0;
+
+  --ink: #2a3b4d;
+  --ink-soft: #51647a;
+  --card: rgba(255,255,255,0.62);
+  --card-border: rgba(255,255,255,0.85);
+  --accent: #ef7d57;
+  --accent-2: #6c7ce0;
+
+  --ease-soft: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+body{
+  margin:0;
+  font-family:'Inter',system-ui,sans-serif;
+  color:var(--ink);
+  background:#bfe3f7;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.serif{ font-family:'Playfair Display',Georgia,serif; font-weight:600; }
+
+/* ---------- SKY CANVAS (fixed behind everything) ---------- */
+#sky{
+  position:fixed; inset:0; z-index:0; overflow:hidden;
+  background:
+    radial-gradient(120% 90% at 50% 0%,
+      var(--sky-top) 0%,
+      var(--sky-mid) 55%,
+      var(--sky-low) 100%);
+  transition: background 2.2s ease;
+}
+#sky::after{ /* mood wash */
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background: rgba(var(--mood-r),var(--mood-g),var(--mood-b),var(--mood-a));
+  mix-blend-mode:soft-light;
+  transition: background 2.2s ease;
+}
+.floater{ position:absolute; will-change:transform; top:0; left:0; }
+#sky svg{ display:block; overflow:visible; }
+
+/* twinkling stars layer (hidden until result) */
+#starfield{ position:fixed; inset:0; z-index:1; pointer-events:none; opacity:0; transition:opacity 2.5s ease; }
+#starfield.show{ opacity:1; }
+.twinkle{ animation: tw 3.2s ease-in-out infinite; }
+@keyframes tw{ 0%,100%{opacity:.15; transform:scale(.7);} 50%{opacity:1; transform:scale(1.15);} }
+
+/* confetti canvas */
+#confetti{ position:fixed; inset:0; z-index:60; pointer-events:none; }
+
+/* ---------- generic content layer ---------- */
+.stage{ position:relative; z-index:10; }
+.section{
+  min-height:100vh; width:100%;
+  display:flex; align-items:center; justify-content:center;
+  padding:80px 20px; position:relative;
+}
+.hidden{ display:none !important; }
+
+/* ---------- progress flight path ---------- */
+#flightpath{
+  position:fixed; top:0; left:0; right:0; z-index:40;
+  height:54px; pointer-events:none; opacity:0;
+  transition:opacity .6s ease;
+}
+#flightpath.show{ opacity:1; }
+#flightpath .pathwrap{ position:absolute; inset:0; padding:0 24px; }
+#flightpath svg{ width:100%; height:54px; }
+#planeMarker{
+  position:absolute; top:8px; left:0; width:34px; height:34px;
+  transform:translateX(-50%); transition:left 1s var(--ease-soft);
+  filter:drop-shadow(0 2px 4px rgba(60,90,130,.35));
+}
+
+/* ============================================================
+   SECTION 1 — LANDING
+   ============================================================ */
+#landing{ flex-direction:column; text-align:center; }
+#heroBalloon{
+  width:min(46vw,260px); margin-bottom:18px;
+  transition: transform 2.4s var(--ease-soft), opacity 1.6s ease;
+  animation: heroSway 7s ease-in-out infinite;
+  filter:drop-shadow(0 18px 26px rgba(60,90,130,.22));
+}
+@keyframes heroSway{
+  0%,100%{ transform: translateY(0) rotate(-1.5deg); }
+  50%{ transform: translateY(-22px) rotate(1.5deg); }
+}
+#heroBalloon.launch{ transform: translateY(-130vh) rotate(6deg); opacity:0; }
+
+.fade-up{ opacity:0; transform:translateY(26px); animation: fadeUp 1s var(--ease-soft) forwards; }
+.d1{ animation-delay:.3s; } .d2{ animation-delay:.7s; } .d3{ animation-delay:1.1s; }
+@keyframes fadeUp{ to{ opacity:1; transform:translateY(0); } }
+
+#landing h1{
+  font-size:clamp(2.1rem,6vw,4rem); margin:0 0 .3em; line-height:1.08;
+  color:#1f3550; letter-spacing:-.5px;
+  text-shadow:0 2px 18px rgba(255,255,255,.6);
+}
+#landing .subtitle{
+  font-size:clamp(1rem,2.4vw,1.35rem); color:var(--ink-soft);
+  margin:0 0 2.2em; font-weight:300; letter-spacing:.3px;
+}
+
+.cloud-btn{
+  position:relative; border:none; cursor:pointer;
+  font-family:'Inter',sans-serif; font-size:1.05rem; font-weight:500;
+  color:#3a5570; padding:18px 40px; border-radius:60px;
+  background:rgba(255,255,255,.82); backdrop-filter:blur(6px);
+  box-shadow:0 10px 30px rgba(90,130,170,.28), inset 0 1px 0 rgba(255,255,255,.9);
+  transition: transform .25s ease, box-shadow .25s ease;
+  /* combine fade-in + glow in one declaration so neither class's
+     `animation` shorthand clobbers the other */
+  animation: fadeUp 1s var(--ease-soft) 1.1s forwards, pulseGlow 2.8s ease-in-out 1.1s infinite;
+}
+.cloud-btn:hover{ transform:translateY(-3px) scale(1.03); }
+.cloud-btn::before, .cloud-btn::after{
+  content:""; position:absolute; background:rgba(255,255,255,.82); border-radius:50%;
+}
+.cloud-btn::before{ width:34px; height:34px; top:-12px; left:30%; }
+.cloud-btn::after{ width:26px; height:26px; top:-9px; left:55%; }
+@keyframes pulseGlow{
+  0%,100%{ box-shadow:0 10px 30px rgba(90,130,170,.28), 0 0 0 0 rgba(255,255,255,.5); }
+  50%{ box-shadow:0 14px 38px rgba(90,130,170,.34), 0 0 38px 6px rgba(255,255,255,.55); }
+}
+
+/* ============================================================
+   SECTION 2 — INTRO STORY
+   ============================================================ */
+#intro{ flex-direction:column; }
+.story-stage{ max-width:760px; width:100%; text-align:center; position:relative; }
+.story-slide{
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:26px;
+  opacity:0; transform:scale(.98); pointer-events:none;
+  transition: opacity .9s ease, transform .9s ease;
+}
+.story-slide.active{ opacity:1; transform:scale(1); pointer-events:auto; position:relative; }
+.story-art{ width:min(90vw,560px); filter:drop-shadow(0 14px 22px rgba(60,90,130,.18)); }
+.story-text{
+  font-family:'Playfair Display',serif; font-size:clamp(1.4rem,3.6vw,2.2rem);
+  color:#23415e; line-height:1.35; font-style:italic; max-width:18ch;
+  text-shadow:0 2px 14px rgba(255,255,255,.6);
+}
+.story-dots{ display:flex; gap:10px; justify-content:center; margin-top:6px; }
+.story-dots span{ width:9px; height:9px; border-radius:50%; background:rgba(40,70,100,.25); transition:.3s; }
+.story-dots span.on{ background:var(--accent); transform:scale(1.25); }
+
+.pill-btn{
+  border:none; cursor:pointer; font-family:'Inter',sans-serif; font-weight:500;
+  font-size:1rem; color:#fff; padding:14px 32px; border-radius:50px;
+  background:linear-gradient(135deg,var(--accent),#f2a35e);
+  box-shadow:0 8px 22px rgba(239,125,87,.4);
+  transition: transform .22s ease, box-shadow .22s ease;
+}
+.pill-btn:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(239,125,87,.5); }
+.ghost-btn{
+  background:rgba(255,255,255,.7); color:#3a5570; box-shadow:0 6px 18px rgba(90,130,170,.22);
+}
+
+/* ============================================================
+   SECTION 3 — QUIZ
+   ============================================================ */
+#quiz{ flex-direction:column; }
+.quiz-card{
+  position:relative; width:min(92vw,640px);
+  background:var(--card); backdrop-filter:blur(14px);
+  border:1px solid var(--card-border); border-radius:30px;
+  padding:54px 38px 46px; text-align:center;
+  box-shadow:0 24px 60px rgba(70,110,160,.26), inset 0 1px 0 rgba(255,255,255,.7);
+  opacity:0; transform:translateY(40px);
+}
+.quiz-card.in{ animation: cardIn .6s var(--ease-soft) forwards; }
+.quiz-card.out{ animation: cardOut .6s var(--ease-soft) forwards; }
+@keyframes cardIn{ from{opacity:0; transform:translateY(40px);} to{opacity:1; transform:translateY(0);} }
+@keyframes cardOut{ from{opacity:1; transform:translateY(0);} to{opacity:0; transform:translateY(-60px);} }
+
+.card-hanger{ position:absolute; top:-92px; left:50%; transform:translateX(-50%); width:78px; }
+.card-hanger .mini-balloon{ animation: hangBob 4s ease-in-out infinite; transform-origin:50% 0; }
+@keyframes hangBob{ 0%,100%{transform:rotate(-3deg);} 50%{transform:rotate(3deg);} }
+
+.q-count{ font-size:.8rem; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:14px; }
+.q-text{ font-size:clamp(1.3rem,3.4vw,1.9rem); color:#1f3550; margin:0 auto 30px; max-width:24ch; line-height:1.3; }
+
+.answers{ display:flex; flex-wrap:wrap; gap:14px 16px; justify-content:center; }
+.answer{
+  position:relative; border:none; cursor:pointer;
+  font-family:'Inter',sans-serif; font-size:.98rem; font-weight:500; color:#3a4f66;
+  padding:14px 22px; min-height:48px; border-radius:40px;
+  background:rgba(255,255,255,.78); border:1px solid rgba(255,255,255,.9);
+  box-shadow:0 6px 16px rgba(90,130,170,.2);
+  transition: transform .2s ease, box-shadow .2s ease, background .3s ease, color .3s ease, opacity .5s ease;
+}
+.answer:hover{ transform:translateY(-3px) scale(1.04); box-shadow:0 12px 24px rgba(90,130,170,.3); }
+.answer.chosen{ background:linear-gradient(135deg,var(--accent),#f4a661); color:#fff; transform:scale(1.06); box-shadow:0 12px 30px rgba(239,125,87,.45); }
+.answer.flyaway{ opacity:0; transform:translateY(-40px) scale(.85); }
+/* slight random offsets so pills don't look gridded */
+.answers .answer:nth-child(1){ transform:translateY(-6px); }
+.answers .answer:nth-child(2){ transform:translateY(8px); }
+.answers .answer:nth-child(3){ transform:translateY(-3px); }
+.answers .answer:nth-child(4){ transform:translateY(5px); }
+
+/* hover micro sky-object */
+.micro{ position:absolute; top:-26px; right:-10px; width:30px; opacity:0; transform:translateY(6px); transition:.35s ease; pointer-events:none; }
+.answer:hover .micro{ opacity:1; transform:translateY(-4px); }
+
+/* ============================================================
+   SECTION 4 — RESULT
+   ============================================================ */
+#result{ flex-direction:column; }
+#mist{
+  position:fixed; inset:0; z-index:55; background:rgba(245,250,255,.0);
+  pointer-events:none; transition: background 1.2s ease;
+}
+#mist.show{ background:rgba(247,251,255,.92); }
+
+.reveal-stage{ position:relative; width:100%; max-width:760px; text-align:center; display:flex; flex-direction:column; align-items:center; }
+#risingBalloon{
+  width:min(60vw,230px);
+  transform:translateY(120vh);
+  transition: transform 3s var(--ease-soft);
+  filter:drop-shadow(0 20px 30px rgba(60,90,130,.25));
+}
+#risingBalloon.up{ transform:translateY(0); }
+
+.rising-text{ font-family:'Playfair Display',serif; font-style:italic; font-size:1.4rem; color:#3a5570; opacity:0; transition:opacity 1s ease; min-height:1.4em; }
+.rising-text.show{ opacity:1; }
+
+#resultTitle{ font-size:clamp(2.2rem,7vw,4rem); color:#1f3550; margin:.2em 0 .1em; min-height:1.1em; }
+#resultTitle .caret{ border-right:3px solid var(--accent); animation: blink .8s steps(1) infinite; }
+@keyframes blink{ 50%{ border-color:transparent; } }
+
+#resultDesc{ font-size:clamp(1rem,2.4vw,1.2rem); color:#3a5570; line-height:1.65; max-width:34ch; margin:.6em auto 1.4em; opacity:0; transform:translateY(14px); transition:.9s ease; font-weight:300; }
+#resultDesc.show{ opacity:1; transform:translateY(0); }
+
+.trait-tags{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:18px; }
+.trait-tag{
+  font-size:.85rem; font-weight:500; color:#3a4f66; padding:8px 16px; border-radius:30px;
+  background:rgba(255,255,255,.8); box-shadow:0 5px 14px rgba(90,130,170,.22);
+  opacity:0; transform:scale(.7) translateY(10px);
+}
+.trait-tag.pop{ animation: tagPop .5s var(--ease-soft) forwards; }
+@keyframes tagPop{ to{ opacity:1; transform:scale(1) translateY(0); } }
+
+.wisdom{ font-family:'Playfair Display',serif; font-style:italic; font-size:1.15rem; color:#5a4a6a; margin:14px auto 6px; max-width:30ch; opacity:0; transition:.9s ease; }
+.wisdom.show{ opacity:1; }
+.pairing{ font-size:.95rem; color:var(--ink-soft); margin-bottom:26px; opacity:0; transition:.9s ease; }
+.pairing.show{ opacity:1; }
+
+.result-actions{ display:flex; flex-wrap:wrap; gap:14px; justify-content:center; opacity:0; transition:.9s ease; }
+.result-actions.show{ opacity:1; }
+
+/* share card */
+#shareCard{
+  margin:26px auto 0; max-width:420px; padding:28px 26px; border-radius:24px;
+  background:rgba(255,255,255,.9); box-shadow:0 18px 44px rgba(70,110,160,.3);
+  text-align:left; display:none;
+}
+#shareCard.show{ display:block; animation: cardIn .5s var(--ease-soft); }
+#shareCard h3{ margin:.1em 0 .4em; font-size:1.5rem; color:#1f3550; }
+#shareCard p{ margin:.3em 0; color:#3a5570; font-size:.95rem; line-height:1.5; }
+#shareCard .share-traits{ color:var(--accent); font-weight:500; }
+#shareCard .copy-hint{ font-size:.78rem; color:var(--ink-soft); margin-top:14px; }
+
+/* all types grid */
+#allTypes{ width:min(94vw,1000px); margin:50px auto 0; display:none; }
+#allTypes.show{ display:block; animation: fadeUp .6s ease; }
+#allTypes h2{ text-align:center; font-size:1.8rem; color:#1f3550; margin-bottom:24px; }
+.type-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:20px; }
+.type-card{
+  background:rgba(255,255,255,.78); backdrop-filter:blur(8px); border-radius:22px;
+  padding:22px 20px; text-align:center; box-shadow:0 12px 30px rgba(90,130,170,.2);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.type-card:hover{ transform:translateY(-5px); box-shadow:0 18px 40px rgba(90,130,170,.3); }
+.type-card svg{ width:88px; height:120px; margin-bottom:8px; }
+.type-card h3{ margin:.2em 0; font-size:1.2rem; color:#1f3550; }
+.type-card p{ font-size:.82rem; color:var(--ink-soft); line-height:1.45; margin:.2em 0 0; }
+
+footer{ text-align:center; padding:34px 16px 50px; color:#5a7088; font-size:.82rem; position:relative; z-index:10; }
+
+/* ---------- RESPONSIVE ---------- */
+@media(max-width:600px){
+  .quiz-card{ padding:46px 22px 38px; }
+  .answers{ gap:12px; }
+  .answer{ font-size:.92rem; padding:13px 18px; }
+  .card-hanger{ top:-78px; width:64px; }
+  #flightpath{ height:46px; }
+}
+@media(prefers-reduced-motion: reduce){
+  *{ animation-duration:.001ms !important; transition-duration:.2s !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ SKY ENGINE ============ -->
+<div id="sky" aria-hidden="true"></div>
+<div id="starfield" aria-hidden="true"></div>
+<div id="mist"></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<!-- ============ FLIGHT PATH PROGRESS ============ -->
+<div id="flightpath" aria-hidden="true">
+  <div class="pathwrap">
+    <svg viewBox="0 0 1000 54" preserveAspectRatio="none">
+      <path d="M10,40 Q500,-4 990,40" fill="none" stroke="rgba(60,90,130,.4)" stroke-width="2" stroke-dasharray="2 9" stroke-linecap="round"/>
+      <circle cx="10" cy="40" r="4" fill="#ef7d57"/>
+      <circle cx="990" cy="40" r="4" fill="#6c7ce0"/>
+    </svg>
+    <svg id="planeMarker" viewBox="0 0 40 40">
+      <path d="M3 20 L37 7 L24 21 L37 33 Z" fill="#fff" stroke="#9fb6cf" stroke-width="1.2" stroke-linejoin="round"/>
+      <path d="M24 21 L20 33 L17 24 Z" fill="#e6eef7"/>
+    </svg>
+  </div>
+</div>
+
+<div class="stage">
+
+  <!-- ============ SECTION 1 — LANDING ============ -->
+  <section id="landing" class="section">
+    <svg id="heroBalloon" viewBox="0 0 200 280" aria-hidden="true">
+      <defs>
+        <radialGradient id="hb" cx="38%" cy="30%" r="80%">
+          <stop offset="0%" stop-color="#ffd28a"/>
+          <stop offset="50%" stop-color="#ef7d57"/>
+          <stop offset="100%" stop-color="#c5563f"/>
+        </radialGradient>
+      </defs>
+      <path d="M100 8 C40 8 14 64 14 110 C14 158 60 188 100 196 C140 188 186 158 186 110 C186 64 160 8 100 8 Z" fill="url(#hb)"/>
+      <path d="M100 8 C82 8 72 64 72 110 C72 150 84 182 100 196 C116 182 128 150 128 110 C128 64 118 8 100 8 Z" fill="#ffe2a8" opacity=".55"/>
+      <path d="M100 8 C92 8 88 64 88 110 C88 150 94 182 100 196 C106 182 112 150 112 110 C112 64 108 8 100 8 Z" fill="#fff3d6" opacity=".5"/>
+      <path d="M72 188 L92 226 M128 188 L108 226 M100 196 L100 226" stroke="#9a6b4f" stroke-width="2" fill="none"/>
+      <rect x="86" y="226" width="28" height="22" rx="4" fill="#a9784f"/>
+      <rect x="86" y="226" width="28" height="22" rx="4" fill="none" stroke="#7d5635" stroke-width="1.5"/>
+      <line x1="92" y1="226" x2="92" y2="248" stroke="#7d5635" stroke-width="1"/>
+      <line x1="100" y1="226" x2="100" y2="248" stroke="#7d5635" stroke-width="1"/>
+      <line x1="108" y1="226" x2="108" y2="248" stroke="#7d5635" stroke-width="1"/>
+    </svg>
+    <h1 class="fade-up d1">What kind of sky traveler are you?</h1>
+    <p class="subtitle fade-up d2">A personality journey through the clouds.</p>
+    <button class="cloud-btn fade-up d3" id="beginBtn">Begin your journey ↓</button>
+  </section>
+
+  <!-- ============ SECTION 2 — INTRO STORY ============ -->
+  <section id="intro" class="section hidden">
+    <div class="story-stage">
+      <!-- slide 1 -->
+      <div class="story-slide active" data-slide="0">
+        <svg class="story-art" viewBox="0 0 560 280" aria-hidden="true">
+          <ellipse cx="280" cy="250" rx="280" ry="40" fill="#bfe6c9" opacity=".5"/>
+          <rect x="0" y="248" width="560" height="32" fill="#a9d8b6" opacity=".6"/>
+          <!-- distant balloons -->
+          <g opacity=".9">
+            <g transform="translate(120,120)"><path d="M0 0 C-26 0 -36 26 -36 50 C-36 76 -16 92 0 98 C16 92 36 76 36 50 C36 26 26 0 0 0Z" fill="#ef7d57"/><rect x="-8" y="108" width="16" height="12" rx="3" fill="#9a6b4f"/><line x1="-12" y1="96" x2="-7" y2="108" stroke="#9a6b4f"/><line x1="12" y1="96" x2="7" y2="108" stroke="#9a6b4f"/></g>
+            <g transform="translate(260,80)"><path d="M0 0 C-30 0 -42 30 -42 58 C-42 88 -18 106 0 114 C18 106 42 88 42 58 C42 30 30 0 0 0Z" fill="#6c7ce0"/><rect x="-9" y="126" width="18" height="13" rx="3" fill="#9a6b4f"/><line x1="-14" y1="112" x2="-8" y2="126" stroke="#9a6b4f"/><line x1="14" y1="112" x2="8" y2="126" stroke="#9a6b4f"/></g>
+            <g transform="translate(420,140)"><path d="M0 0 C-24 0 -34 24 -34 46 C-34 70 -14 86 0 92 C14 86 34 70 34 46 C34 24 24 0 0 0Z" fill="#67c29a"/><rect x="-7" y="100" width="14" height="11" rx="3" fill="#9a6b4f"/><line x1="-11" y1="90" x2="-6" y2="100" stroke="#9a6b4f"/><line x1="11" y1="90" x2="6" y2="100" stroke="#9a6b4f"/></g>
+          </g>
+        </svg>
+        <p class="story-text">It's the day of the Great Sky Festival.</p>
+      </div>
+      <!-- slide 2 -->
+      <div class="story-slide" data-slide="1">
+        <svg class="story-art" viewBox="0 0 560 240" aria-hidden="true">
+          <g class="hov1"><g transform="translate(90,90)"><path d="M0 0 C-28 0 -38 28 -38 54 C-38 82 -16 98 0 104 C16 98 38 82 38 54 C38 28 28 0 0 0Z" fill="#bda7e8"/><rect x="-8" y="114" width="16" height="12" rx="3" fill="#9a6b4f"/></g></g>
+          <g class="hov2"><g transform="translate(230,90)"><path d="M0 0 C-28 0 -38 28 -38 54 C-38 82 -16 98 0 104 C16 98 38 82 38 54 C38 28 28 0 0 0Z" fill="#ef7d57"/><rect x="-8" y="114" width="16" height="12" rx="3" fill="#9a6b4f"/></g></g>
+          <g class="hov3"><g transform="translate(370,90)"><path d="M0 0 C-28 0 -38 28 -38 54 C-38 82 -16 98 0 104 C16 98 38 82 38 54 C38 28 28 0 0 0Z" fill="#67c29a"/><rect x="-8" y="114" width="16" height="12" rx="3" fill="#9a6b4f"/></g></g>
+          <g class="hov4"><g transform="translate(500,90)"><path d="M0 0 C-28 0 -38 28 -38 54 C-38 82 -16 98 0 104 C16 98 38 82 38 54 C38 28 28 0 0 0Z" fill="#5a8fd6"/><rect x="-8" y="114" width="16" height="12" rx="3" fill="#9a6b4f"/></g></g>
+        </svg>
+        <p class="story-text">Everyone gets to choose a balloon. But which one calls to you?</p>
+      </div>
+      <!-- slide 3 -->
+      <div class="story-slide" data-slide="2">
+        <svg class="story-art" viewBox="0 0 560 280" aria-hidden="true">
+          <ellipse cx="280" cy="210" rx="120" ry="30" fill="#fff" opacity=".55"/>
+          <ellipse cx="200" cy="220" rx="70" ry="24" fill="#fff" opacity=".5"/>
+          <ellipse cx="360" cy="220" rx="80" ry="26" fill="#fff" opacity=".5"/>
+          <g transform="translate(280,90)"><path d="M0 0 C-34 0 -46 34 -46 64 C-46 96 -20 116 0 124 C20 116 46 96 46 64 C46 34 34 0 0 0Z" fill="#ef7d57"/><path d="M0 0 C-12 0 -16 34 -16 64 C-16 96 -6 116 0 124 C6 116 16 96 16 64 C16 34 12 0 0 0Z" fill="#ffd28a" opacity=".6"/><rect x="-10" y="136" width="20" height="15" rx="3" fill="#9a6b4f"/><line x1="-16" y1="120" x2="-9" y2="136" stroke="#9a6b4f"/><line x1="16" y1="120" x2="9" y2="136" stroke="#9a6b4f"/></g>
+        </svg>
+        <p class="story-text">Let's find out who you truly are up there.</p>
+      </div>
+      <div class="story-dots" aria-hidden="true"><span class="on"></span><span></span><span></span></div>
+      <div style="margin-top:26px;">
+        <button class="pill-btn" id="storyNext">Continue →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 3 — QUIZ ============ -->
+  <section id="quiz" class="section hidden">
+    <div class="quiz-card" id="quizCard">
+      <div class="card-hanger" aria-hidden="true">
+        <svg viewBox="0 0 78 110">
+          <g class="mini-balloon">
+            <path d="M39 4 C20 4 12 26 12 44 C12 64 28 76 39 80 C50 76 66 64 66 44 C66 26 58 4 39 4Z" fill="#ef7d57"/>
+            <path d="M39 4 C32 4 29 26 29 44 C29 64 35 76 39 80 C43 76 49 64 49 44 C49 26 46 4 39 4Z" fill="#ffd28a" opacity=".6"/>
+            <rect x="33" y="86" width="12" height="9" rx="2" fill="#9a6b4f"/>
+            <line x1="30" y1="78" x2="34" y2="86" stroke="#9a6b4f" stroke-width="1.2"/>
+            <line x1="48" y1="78" x2="44" y2="86" stroke="#9a6b4f" stroke-width="1.2"/>
+            <line x1="39" y1="95" x2="39" y2="110" stroke="#bda" stroke-width="1.2" stroke-dasharray="2 3"/>
+          </g>
+        </svg>
+      </div>
+      <div class="q-count" id="qCount">1 of 12</div>
+      <h2 class="q-text" id="qText">Question</h2>
+      <div class="answers" id="answers"></div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 4 — RESULT ============ -->
+  <section id="result" class="section hidden">
+    <div class="reveal-stage">
+      <p class="rising-text" id="risingText"></p>
+      <svg id="risingBalloon" viewBox="0 0 200 280" aria-hidden="true"></svg>
+      <h1 id="resultTitle"></h1>
+      <p id="resultDesc"></p>
+      <div class="trait-tags" id="traitTags"></div>
+      <p class="wisdom" id="wisdom"></p>
+      <p class="pairing" id="pairing"></p>
+      <div class="result-actions" id="resultActions">
+        <button class="pill-btn" id="shareBtn">Share your balloon</button>
+        <button class="pill-btn ghost-btn" id="allTypesBtn">See all balloon types</button>
+        <button class="pill-btn ghost-btn" id="flyAgainBtn">Fly again ↺</button>
+      </div>
+      <div id="shareCard"></div>
+    </div>
+    <div id="allTypes">
+      <h2>The Eight Sky Travelers</h2>
+      <div class="type-grid" id="typeGrid"></div>
+    </div>
+  </section>
+
+  <footer>Made with clouds, code &amp; a little wonder. ☁︎</footer>
+</div>
+
+<script>
+/* ============================================================
+   1. PERSONALITY TYPES
+   ============================================================ */
+const TYPES = {
+  dreamer:{ key:'dreamer', name:'The Dreamer', palette:['#bda7e8','#e8def7','#9d8ad6','#fff'],
+    desc:"You live a half-step inside your imagination, where ordinary mornings hum with quiet magic. You notice the things others rush past — the shape of a cloud, the pause before a song begins. Your inner world is vast and gently lit. To travel the sky with you is to remember that wonder was never lost, only waiting.",
+    traits:['Imaginative','Introspective','Curious','Gentle','Whimsical'],
+    wisdom:"The softest dreams drift highest of all.",
+    love:"Rainy-day bookshops and stories told at dusk" },
+  explorer:{ key:'explorer', name:'The Explorer', palette:['#ef5350','#ffce54','#c5563f','#ffe2a8'],
+    desc:"There's always one more horizon calling your name, and you've never been good at ignoring it. Boldness comes naturally — you'd rather be a little lost than perfectly still. Every map you finish you immediately want to redraw. The sky is wide because people like you keep flying past its edges.",
+    traits:['Bold','Curious','Restless','Brave','Open-hearted'],
+    wisdom:"Every horizon is just the start of the next.",
+    love:"Sunrise hikes to places without names" },
+  nurturer:{ key:'nurturer', name:'The Nurturer', palette:['#9ccc8f','#f4f1d8','#6faf63','#fff'],
+    desc:"You carry a warmth that makes people feel like they've come home. Empathy is your native language; you hear what others don't say out loud. When someone's balloon sinks, you're already there to help it rise. The sky is kinder for having you in it.",
+    traits:['Warm','Empathetic','Patient','Generous','Grounded'],
+    wisdom:"To lift another is the truest way to fly.",
+    love:"Slow mornings making tea for the people you love" },
+  architect:{ key:'architect', name:'The Architect', palette:['#3f6fb0','#cfd8e6','#2c4f86','#e6eef7'],
+    desc:"You see the structure beneath the surface of things — the quiet logic holding the world together. Where others see chaos, you sketch a plan. You build slowly and well, choosing things that last over things that dazzle. Your balloon flies straight because you charted the wind before you left.",
+    traits:['Logical','Visionary','Precise','Steady','Thoughtful'],
+    wisdom:"Dream the cathedral, then lay each stone.",
+    love:"A clean desk, a hard problem, and a long quiet evening" },
+  adventurer:{ key:'adventurer', name:'The Adventurer', palette:['#ff9f43','#ffd54f','#f57c00','#fff3d6'],
+    desc:"You live at full brightness, in the present tense, with the throttle wide open. Spontaneity is your superpower — you say yes before fear can finish its sentence. Fun follows you because you go looking for it. The sky feels electric when you're flying through it.",
+    traits:['Spontaneous','Fearless','Energetic','Playful','Free'],
+    wisdom:"The best stories begin the moment you leap.",
+    love:"Last-minute road trips with the windows down" },
+  sage:{ key:'sage', name:'The Sage', palette:['#5b4b9e','#ffd86b','#3f3577','#efe3ff'],
+    desc:"You move through life a little above the noise, watching how all the pieces fit. Stillness doesn't frighten you — it's where your clearest thoughts are born. People bring you their tangles and leave with a thread to follow. From your altitude, even storms have a shape and a season.",
+    traits:['Wise','Reflective','Calm','Perceptive','Deep'],
+    wisdom:"Rise high enough and every storm reveals its edges.",
+    love:"Quiet nights under a wide and patient sky" },
+  creator:{ key:'creator', name:'The Creator', palette:['#ff6b9d','#ffd93d','#6bcB77','#5aa9e6'],
+    desc:"You feel everything in color, and you can't help turning it into something. Expression isn't a hobby for you — it's how you breathe. You see possibility where others see a blank page, and you fill it without asking permission. Your balloon is a riot of paint because so is your heart.",
+    traits:['Expressive','Original','Spirited','Bold','Sensitive'],
+    wisdom:"Pour the feeling out and call it a sky.",
+    love:"Messy hands, loud music, and an idea half-finished" },
+  guardian:{ key:'guardian', name:'The Guardian', palette:['#3f7d4f','#8a6243','#2c5a38','#dceadf'],
+    desc:"You are the steady presence others didn't know they were leaning on. Reliable to the core, you keep your promises like anchors. When the wind turns wild, people drift toward you because you don't drift. The sky trusts you to hold the rope, and you always do.",
+    traits:['Dependable','Protective','Loyal','Grounded','Calm'],
+    wisdom:"The steadiest rope lets others soar.",
+    love:"Tending something small and watching it grow strong" }
+};
+const TYPE_ORDER = ['dreamer','explorer','nurturer','architect','adventurer','sage','creator','guardian'];
+
+/* mood weighting per type for sky tinting: calm / adventure / dreamy */
+const MOOD = {
+  calm:      {r:120,g:140,b:210}, // soft blue/lavender
+  adventure: {r:255,g:160,b:70},  // golden/orange
+  dreamy:    {r:255,g:150,b:200}  // pink
+};
+
+/* ============================================================
+   2. QUIZ DATA — 12 scenario questions
+   each answer awards points to two types + a mood lean
+   ============================================================ */
+const QUESTIONS = [
+  { q:"The festival gates open. Where do you head first?", a:[
+    {t:"Toward the quietest corner, to watch it all unfold", s:['dreamer','sage'], m:'calm'},
+    {t:"Straight to the launch field — I want to fly NOW", s:['adventurer','explorer'], m:'adventure'},
+    {t:"To find friends and pull everyone along with me", s:['nurturer','creator'], m:'dreamy'},
+    {t:"To study the map and plan the perfect route", s:['architect','guardian'], m:'calm'} ]},
+
+  { q:"You find your balloon. It's...", a:[
+    {t:"Painted in colors no one's ever named", s:['creator','dreamer'], m:'dreamy'},
+    {t:"Sturdy, well-built, ready for anything", s:['guardian','architect'], m:'calm'},
+    {t:"The boldest, brightest one on the field", s:['adventurer','explorer'], m:'adventure'},
+    {t:"Soft and warm, like it was waiting for me", s:['nurturer','sage'], m:'calm'} ]},
+
+  { q:"The wind picks up. What do you do?", a:[
+    {t:"Lean into it and let it carry me somewhere new", s:['adventurer','explorer'], m:'adventure'},
+    {t:"Adjust the ropes — I planned for this", s:['architect','guardian'], m:'calm'},
+    {t:"Close my eyes and feel the whole sky breathe", s:['dreamer','sage'], m:'dreamy'},
+    {t:"Check that everyone near me is okay", s:['nurturer','guardian'], m:'calm'} ]},
+
+  { q:"Another traveler waves at you from their balloon. You...", a:[
+    {t:"Wave back and shout an invitation to race", s:['adventurer','explorer'], m:'adventure'},
+    {t:"Drift closer for a long, easy conversation", s:['nurturer','creator'], m:'dreamy'},
+    {t:"Smile and give a small, quiet nod", s:['sage','dreamer'], m:'calm'},
+    {t:"Wonder where they're headed and why", s:['explorer','architect'], m:'calm'} ]},
+
+  { q:"You drift over a beautiful forest. What catches your eye?", a:[
+    {t:"The light falling through the leaves like a dream", s:['dreamer','creator'], m:'dreamy'},
+    {t:"A hidden trail no one else has noticed", s:['explorer','adventurer'], m:'adventure'},
+    {t:"How the whole ecosystem fits together", s:['architect','sage'], m:'calm'},
+    {t:"A little creature I'd want to keep safe", s:['nurturer','guardian'], m:'calm'} ]},
+
+  { q:"A storm appears on the horizon. Your instinct is to...", a:[
+    {t:"Steer toward it — what an adventure", s:['adventurer','explorer'], m:'adventure'},
+    {t:"Read the clouds and find the calm path through", s:['sage','architect'], m:'calm'},
+    {t:"Make sure the others get to safety first", s:['guardian','nurturer'], m:'calm'},
+    {t:"Marvel at how fierce and beautiful it is", s:['dreamer','creator'], m:'dreamy'} ]},
+
+  { q:"You find a message in a bottle floating near a cloud. You...", a:[
+    {t:"Imagine a hundred stories about who wrote it", s:['dreamer','creator'], m:'dreamy'},
+    {t:"Set off immediately to find the sender", s:['explorer','adventurer'], m:'adventure'},
+    {t:"Carefully decode what it's really trying to say", s:['architect','sage'], m:'calm'},
+    {t:"Write a kind reply and send it back out", s:['nurturer','guardian'], m:'dreamy'} ]},
+
+  { q:"The sun starts to set. Your sky turns golden. You feel...", a:[
+    {t:"A deep, peaceful sense of having arrived", s:['sage','guardian'], m:'calm'},
+    {t:"Inspired — I have to capture this somehow", s:['creator','dreamer'], m:'dreamy'},
+    {t:"Restless for whatever tomorrow brings", s:['explorer','adventurer'], m:'adventure'},
+    {t:"Grateful for everyone I get to share it with", s:['nurturer','dreamer'], m:'dreamy'} ]},
+
+  { q:"Your balloon lands unexpectedly in a meadow. You...", a:[
+    {t:"Explore every inch of this new place", s:['explorer','adventurer'], m:'adventure'},
+    {t:"Lie in the grass and watch the clouds", s:['dreamer','sage'], m:'calm'},
+    {t:"Figure out exactly how to get airborne again", s:['architect','guardian'], m:'calm'},
+    {t:"Plant a few seeds before I go", s:['nurturer','creator'], m:'dreamy'} ]},
+
+  { q:"A child on the ground waves up at you. You...", a:[
+    {t:"Drop them a paper note with a little drawing", s:['creator','nurturer'], m:'dreamy'},
+    {t:"Do a daring loop just to make them laugh", s:['adventurer','explorer'], m:'adventure'},
+    {t:"Wave warmly and wish them a safe life", s:['guardian','nurturer'], m:'calm'},
+    {t:"Wonder what dreams they'll chase one day", s:['dreamer','sage'], m:'dreamy'} ]},
+
+  { q:"Night falls. The stars come out. You...", a:[
+    {t:"Name new constellations of my own", s:['creator','dreamer'], m:'dreamy'},
+    {t:"Use them to navigate somewhere far", s:['explorer','architect'], m:'adventure'},
+    {t:"Sit in the silence and simply understand", s:['sage','dreamer'], m:'calm'},
+    {t:"Keep watch so the others can rest", s:['guardian','nurturer'], m:'calm'} ]},
+
+  { q:"It's time to come back down. What do you carry with you?", a:[
+    {t:"A heart full of images I'll paint forever", s:['creator','dreamer'], m:'dreamy'},
+    {t:"The thrill, and a list of where to go next", s:['adventurer','explorer'], m:'adventure'},
+    {t:"A quiet wisdom about how small worries are", s:['sage','architect'], m:'calm'},
+    {t:"The people I met, and a promise to return", s:['nurturer','guardian'], m:'dreamy'} ]}
+];
+
+/* ============================================================
+   3. STATE
+   ============================================================ */
+const scores = {}; TYPE_ORDER.forEach(t=>scores[t]=0);
+const moodTotals = { calm:0, adventure:0, dreamy:0 };
+let qIndex = 0;
+let resultType = null;
+
+/* ============================================================
+   4. SKY ENGINE — requestAnimationFrame floaters
+   ============================================================ */
+const sky = document.getElementById('sky');
+const isMobile = window.matchMedia('(max-width:600px)').matches;
+const W = ()=>window.innerWidth, H = ()=>window.innerHeight;
+let floaters = [];
+let lanternStage = false;   // more lanterns later in quiz
+let paused = false;
+let scrollY = 0;
+window.addEventListener('scroll', ()=>{ scrollY = window.scrollY||window.pageYOffset; });
+
+/* ---- SVG factory functions ---- */
+function el(svg){ const d=document.createElement('div'); d.className='floater'; d.innerHTML=svg; return d; }
+
+function balloonSVG(c1,c2,stripe){
+  return `<svg width="74" height="104" viewBox="0 0 74 104">
+    <path d="M37 3 C16 3 8 27 8 48 C8 70 25 84 37 90 C49 84 66 70 66 48 C66 27 58 3 37 3Z" fill="${c1}"/>
+    <path d="M37 3 C29 3 26 27 26 48 C26 70 32 84 37 90 C42 84 48 70 48 48 C48 27 45 3 37 3Z" fill="${c2}" opacity=".7"/>
+    ${stripe?`<path d="M14 30 Q37 38 60 30" stroke="${stripe}" stroke-width="3" fill="none" opacity=".7"/><path d="M11 50 Q37 60 63 50" stroke="${stripe}" stroke-width="3" fill="none" opacity=".7"/>`:''}
+    <rect x="31" y="96" width="12" height="8" rx="2" fill="#9a6b4f"/>
+    <line x1="28" y1="88" x2="32" y2="96" stroke="#9a6b4f" stroke-width="1"/>
+    <line x1="46" y1="88" x2="42" y2="96" stroke="#9a6b4f" stroke-width="1"/>
+  </svg>`;
+}
+function cloudSVG(scale){
+  const o = 0.78;
+  return `<svg width="${180*scale}" height="${90*scale}" viewBox="0 0 180 90">
+    <g fill="#ffffff" fill-opacity="${o}">
+      <circle cx="55" cy="55" r="30"/><circle cx="90" cy="42" r="38"/>
+      <circle cx="128" cy="54" r="28"/><circle cx="100" cy="64" r="30"/>
+      <circle cx="68" cy="62" r="26"/>
+    </g>
+  </svg>`;
+}
+function planeSVG(){
+  return `<svg width="44" height="34" viewBox="0 0 44 34">
+    <path d="M2 17 L42 4 L26 18 L42 30 Z" fill="#fff" stroke="#cdd9e6" stroke-width="1"/>
+    <path d="M26 18 L20 30 L17 21 Z" fill="#e6eef7"/>
+  </svg>`;
+}
+function kiteSVG(){
+  return `<svg width="60" height="140" viewBox="0 0 60 140">
+    <path d="M30 4 L54 40 L30 76 L6 40 Z" fill="#ff8aa0"/>
+    <path d="M30 4 L30 76 M6 40 L54 40" stroke="#fff" stroke-width="1.5" opacity=".7"/>
+    <path class="kitetail" d="M30 76 Q34 92 26 104 Q34 118 26 132" stroke="#ff8aa0" stroke-width="2.5" fill="none"/>
+  </svg>`;
+}
+function lanternSVG(){
+  const id='lg'+Math.random().toString(36).slice(2,7);
+  return `<svg width="34" height="48" viewBox="0 0 34 48">
+    <defs><radialGradient id="${id}" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#fff3c4"/><stop offset="100%" stop-color="#ffb347"/></radialGradient></defs>
+    <ellipse cx="17" cy="44" rx="9" ry="3" fill="#ffce8a" opacity=".5"/>
+    <path d="M6 18 Q6 6 17 6 Q28 6 28 18 L26 36 Q17 42 8 36 Z" fill="url(#${id})" opacity=".92"/>
+    <rect x="9" y="4" width="16" height="4" rx="2" fill="#c98a3c"/>
+    <circle cx="17" cy="24" r="14" fill="#fff1b8" opacity=".35"/>
+  </svg>`;
+}
+function birdsSVG(){
+  return `<svg width="80" height="40" viewBox="0 0 80 40">
+    <path d="M6 20 Q12 12 18 20 Q24 12 30 20" stroke="#3a5570" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <path d="M40 26 Q45 19 50 26 Q55 19 60 26" stroke="#3a5570" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="M22 34 Q26 28 30 34 Q34 28 38 34" stroke="#3a5570" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
+
+/* ---- floater spawning ---- */
+function makeFloater(type, opts={}){
+  let node;
+  if(type==='cloud'){ node = el(cloudSVG(opts.scale||1)); }
+  else if(type==='balloon'){ const p=opts.palette; node = el(balloonSVG(p[0],p[1],p[2])); }
+  else if(type==='plane'){ node = el(planeSVG()); }
+  else if(type==='kite'){ node = el(kiteSVG()); }
+  else if(type==='lantern'){ node = el(lanternSVG()); }
+  else if(type==='birds'){ node = el(birdsSVG()); }
+  sky.appendChild(node);
+  const f = {
+    node, type,
+    x: opts.x!=null?opts.x : Math.random()*W(),
+    y: opts.y!=null?opts.y : Math.random()*H()*0.8,
+    speed: opts.speed!=null?opts.speed : (0.15+Math.random()*0.5),
+    bobAmp: 6+Math.random()*16,
+    bobSpeed: 0.4+Math.random()*0.9,
+    phase: Math.random()*Math.PI*2,
+    depth: opts.depth!=null?opts.depth : (0.3+Math.random()*0.7), // parallax
+    drift: (Math.random()-0.5)*0.2,
+    riseSpeed: opts.riseSpeed||0
+  };
+  floaters.push(f);
+  return f;
+}
+
+function buildSky(){
+  floaters.forEach(f=>f.node.remove()); floaters=[];
+  const half = isMobile ? 0.5 : 1;
+  const n = (x)=>Math.max(1,Math.round(x*half));
+
+  // clouds (parallax depth)
+  for(let i=0;i<n(7);i++) makeFloater('cloud',{scale:0.6+Math.random()*1.1, speed:0.1+Math.random()*0.35, depth:0.2+Math.random()*0.5});
+  // hero-area balloons
+  const palettes=[['#ef7d57','#ffd28a','#fff'],['#6c7ce0','#cfd8f7','#fff'],['#67c29a','#e3f5ea','#fff'],['#ff9f43','#ffe6a8','#fff']];
+  for(let i=0;i<n(4);i++) makeFloater('balloon',{palette:palettes[i%palettes.length], speed:0.12+Math.random()*0.25, depth:0.5+Math.random()*0.4});
+  // planes
+  for(let i=0;i<n(3);i++) makeFloater('plane',{speed:0.7+Math.random()*0.6, depth:0.8});
+  // kites
+  for(let i=0;i<n(2);i++) makeFloater('kite',{speed:0.18, depth:0.6});
+  // birds
+  for(let i=0;i<n(2);i++) makeFloater('birds',{speed:0.4+Math.random()*0.3, depth:0.7});
+  // a couple of lanterns to start
+  for(let i=0;i<n(2);i++) makeFloater('lantern',{y:H()*0.6+Math.random()*H()*0.3, speed:0.1, riseSpeed:0.25+Math.random()*0.3, depth:0.5});
+}
+
+function addLanterns(count){
+  for(let i=0;i<count;i++){
+    makeFloater('lantern',{ x:Math.random()*W(), y:H()+20+Math.random()*120, speed:0.08, riseSpeed:0.3+Math.random()*0.4, depth:0.4+Math.random()*0.4 });
+  }
+}
+
+let lastT = performance.now();
+function tick(now){
+  const dt = Math.min(40, now-lastT); lastT = now;
+  if(!paused){
+    const t = now/1000;
+    for(const f of floaters){
+      f.x += f.speed * dt/16;
+      f.y += f.drift * dt/16;
+      if(f.riseSpeed){ f.y -= f.riseSpeed * dt/16; }
+      const bob = Math.sin(t*f.bobSpeed + f.phase)*f.bobAmp;
+      // wrap horizontally
+      if(f.x > W()+120) f.x = -120;
+      if(f.x < -180) f.x = W()+120;
+      // lanterns rising off top -> respawn at bottom
+      if(f.riseSpeed && f.y < -80){ f.y = H()+40+Math.random()*100; f.x=Math.random()*W(); }
+      // parallax from scroll
+      const px = -scrollY * (1-f.depth) * 0.25;
+      f.node.style.transform = `translate(${f.x}px, ${f.y+bob+px}px)`;
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+document.addEventListener('visibilitychange', ()=>{ paused = document.hidden; lastT = performance.now(); });
+
+/* ============================================================
+   5. SKY COLOR + MOOD
+   ============================================================ */
+const root = document.documentElement;
+// progress 0..1 across quiz warms the base gradient
+function updateSkyTemperature(progress){
+  const lerp=(a,b,t)=>Math.round(a+(b-a)*t);
+  const top = [ lerp(0x5b,0xf2,progress), lerp(0xb8,0xa6,progress), lerp(0xf5,0x6e,progress) ];
+  const mid = [ lerp(0xc9,0xff,progress), lerp(0xe8,0xd9,progress), lerp(0xf7,0xb0,progress) ];
+  const low = [ lerp(0xf0,0xff,progress), lerp(0xf8,0xf0,progress), lerp(0xff,0xdd,progress) ];
+  root.style.setProperty('--sky-top', `rgb(${top.join(',')})`);
+  root.style.setProperty('--sky-mid', `rgb(${mid.join(',')})`);
+  root.style.setProperty('--sky-low', `rgb(${low.join(',')})`);
+}
+function updateMood(){
+  const total = moodTotals.calm+moodTotals.adventure+moodTotals.dreamy || 1;
+  let r=0,g=0,b=0;
+  for(const k in moodTotals){
+    const w = moodTotals[k]/total;
+    r+=MOOD[k].r*w; g+=MOOD[k].g*w; b+=MOOD[k].b*w;
+  }
+  root.style.setProperty('--mood-r', Math.round(r));
+  root.style.setProperty('--mood-g', Math.round(g));
+  root.style.setProperty('--mood-b', Math.round(b));
+  root.style.setProperty('--mood-a', 0.32);
+}
+
+/* ============================================================
+   6. NAVIGATION FLOW
+   ============================================================ */
+const sLanding=document.getElementById('landing');
+const sIntro=document.getElementById('intro');
+const sQuiz=document.getElementById('quiz');
+const sResult=document.getElementById('result');
+
+function show(section){ section.classList.remove('hidden'); }
+function hide(section){ section.classList.add('hidden'); }
+
+/* --- landing -> intro --- */
+let launched=false;
+function launchHero(){
+  if(launched) return; launched=true;
+  document.getElementById('heroBalloon').classList.add('launch');
+  setTimeout(()=>{
+    hide(sLanding); show(sIntro);
+    window.scrollTo({top:0});
+  }, 1300);
+}
+document.getElementById('beginBtn').addEventListener('click', launchHero);
+
+/* --- intro story slides --- */
+let slide=0;
+const slides=[...document.querySelectorAll('.story-slide')];
+const dots=[...document.querySelectorAll('.story-dots span')];
+document.getElementById('storyNext').addEventListener('click', ()=>{
+  if(slide < slides.length-1){
+    slides[slide].classList.remove('active');
+    slide++;
+    slides[slide].classList.add('active');
+    dots.forEach((d,i)=>d.classList.toggle('on', i<=slide));
+    if(slide===slides.length-1) document.getElementById('storyNext').textContent='Start the quiz →';
+  } else {
+    startQuiz();
+  }
+});
+
+/* --- quiz --- */
+function startQuiz(){
+  hide(sIntro); show(sQuiz);
+  document.getElementById('flightpath').classList.add('show');
+  qIndex=0;
+  renderQuestion();
+}
+
+const micros=['<svg viewBox="0 0 30 18"><path d="M3 12 Q7 6 11 12 Q15 6 19 12" stroke="#3a5570" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+  '<svg viewBox="0 0 30 18"><g fill="#fff" fill-opacity=".95"><circle cx="9" cy="11" r="6"/><circle cx="16" cy="8" r="7"/><circle cx="22" cy="11" r="5"/></g></svg>',
+  '<svg viewBox="0 0 30 30"><path d="M15 3 L17 12 L26 14 L17 16 L15 26 L13 16 L4 14 L13 12 Z" fill="#ffd86b"/></svg>'];
+
+function renderQuestion(){
+  const card=document.getElementById('quizCard');
+  const data=QUESTIONS[qIndex];
+  document.getElementById('qCount').textContent=`${qIndex+1} of ${QUESTIONS.length}`;
+  document.getElementById('qText').textContent=data.q;
+  const wrap=document.getElementById('answers');
+  wrap.innerHTML='';
+  data.a.forEach((ans,i)=>{
+    const b=document.createElement('button');
+    b.className='answer';
+    b.innerHTML=`<span class="micro">${micros[i%micros.length]}</span>${ans.t}`;
+    b.addEventListener('click', ()=>choose(b, ans));
+    wrap.appendChild(b);
+  });
+  card.classList.remove('out'); card.classList.add('in');
+  // progress
+  const pct = qIndex/(QUESTIONS.length-1);
+  positionPlane(pct);
+  updateSkyTemperature(qIndex/(QUESTIONS.length-1));
+  // lanterns intensify in later stages
+  if(qIndex===7 && !lanternStage){ lanternStage=true; addLanterns(isMobile?2:4); }
+}
+
+function positionPlane(pct){
+  const marker=document.getElementById('planeMarker');
+  const x = 4 + pct*92;
+  marker.style.left = x+'%';
+}
+
+let answering=false;
+function choose(btn, ans){
+  if(answering) return; answering=true;
+  // tally
+  ans.s.forEach(t=>scores[t]+=2);
+  moodTotals[ans.m]+=1;
+  updateMood();
+  btn.classList.add('chosen');
+  [...document.querySelectorAll('.answer')].forEach(a=>{ if(a!==btn) a.classList.add('flyaway'); });
+  setTimeout(()=>{
+    const card=document.getElementById('quizCard');
+    card.classList.remove('in'); card.classList.add('out');
+    setTimeout(()=>{
+      answering=false;
+      if(qIndex < QUESTIONS.length-1){ qIndex++; renderQuestion(); }
+      else finishQuiz();
+    }, 600);
+  }, 650);
+}
+
+/* ============================================================
+   7. RESULT
+   ============================================================ */
+function computeResult(){
+  let best=TYPE_ORDER[0], bestScore=-1;
+  TYPE_ORDER.forEach(t=>{ if(scores[t]>bestScore){ bestScore=scores[t]; best=t; } });
+  return TYPES[best];
+}
+
+function resultBalloonSVG(pal){
+  const id='rb'+Math.random().toString(36).slice(2,6);
+  return `<svg viewBox="0 0 200 280">
+    <defs><radialGradient id="${id}" cx="40%" cy="28%" r="85%">
+      <stop offset="0%" stop-color="${pal[1]}"/><stop offset="55%" stop-color="${pal[0]}"/><stop offset="100%" stop-color="${pal[2]}"/></radialGradient></defs>
+    <path d="M100 8 C40 8 14 64 14 110 C14 158 60 188 100 196 C140 188 186 158 186 110 C186 64 160 8 100 8 Z" fill="url(#${id})"/>
+    <path d="M100 8 C82 8 72 64 72 110 C72 150 84 182 100 196 C116 182 128 150 128 110 C128 64 118 8 100 8 Z" fill="${pal[3]}" opacity=".4"/>
+    <path d="M30 80 Q100 100 170 80" stroke="${pal[3]}" stroke-width="4" fill="none" opacity=".5"/>
+    <path d="M22 120 Q100 145 178 120" stroke="${pal[3]}" stroke-width="4" fill="none" opacity=".5"/>
+    <path d="M72 188 L92 226 M128 188 L108 226 M100 196 L100 226" stroke="#9a6b4f" stroke-width="2" fill="none"/>
+    <rect x="86" y="226" width="28" height="22" rx="4" fill="#a9784f" stroke="#7d5635" stroke-width="1.5"/>
+  </svg>`;
+}
+
+function finishQuiz(){
+  resultType = computeResult();
+  hide(sQuiz);
+  document.getElementById('flightpath').classList.remove('show');
+  show(sResult);
+  window.scrollTo({top:0});
+  document.getElementById('mist').classList.add('show');
+  updateSkyTemperature(1);
+  setTimeout(runRevealSequence, 700);
+}
+
+function typeText(elm, text, speed, done){
+  elm.innerHTML=''; let i=0;
+  const caret=document.createElement('span'); caret.className='caret'; caret.innerHTML='&nbsp;';
+  elm.appendChild(caret);
+  const iv=setInterval(()=>{
+    if(i<text.length){ caret.insertAdjacentText('beforebegin', text[i]); i++; }
+    else{ clearInterval(iv); setTimeout(()=>caret.remove(),900); if(done)done(); }
+  }, speed);
+}
+
+function runRevealSequence(){
+  const rt=document.getElementById('risingText');
+  const rb=document.getElementById('risingBalloon');
+  rb.innerHTML=resultBalloonSVG(resultType.palette);
+
+  rt.textContent="Your balloon is rising...";
+  rt.classList.add('show');
+
+  setTimeout(()=>{
+    document.getElementById('mist').classList.remove('show');
+    partClouds();
+    rb.classList.add('up');
+  }, 900);
+
+  setTimeout(()=>{ rt.classList.remove('show'); }, 3200);
+
+  setTimeout(()=>{
+    burstConfetti(resultType.palette);
+    document.getElementById('starfield').classList.add('show');
+    buildStars();
+    typeText(document.getElementById('resultTitle'), resultType.name, 90, ()=>{
+      const d=document.getElementById('resultDesc');
+      d.textContent=resultType.desc; d.classList.add('show');
+      const tt=document.getElementById('traitTags'); tt.innerHTML='';
+      resultType.traits.forEach((tr,i)=>{
+        const s=document.createElement('span'); s.className='trait-tag'; s.textContent=tr;
+        tt.appendChild(s);
+        setTimeout(()=>s.classList.add('pop'), 400+i*220);
+      });
+      setTimeout(()=>{
+        const w=document.getElementById('wisdom'); w.textContent='“'+resultType.wisdom+'”'; w.classList.add('show');
+        const p=document.getElementById('pairing'); p.textContent="You'd love: "+resultType.love; p.classList.add('show');
+        document.getElementById('resultActions').classList.add('show');
+      }, 400+resultType.traits.length*220+400);
+    });
+  }, 3300);
+}
+
+/* clouds part dramatically */
+function partClouds(){
+  floaters.filter(f=>f.type==='cloud').forEach(f=>{
+    f.node.style.transition='transform 2.4s cubic-bezier(.3,0,.2,1)';
+    f.drift = f.x < W()/2 ? -2.4 : 2.4;
+    f.speed = f.drift;
+  });
+  setTimeout(()=>{ floaters.filter(f=>f.type==='cloud').forEach(f=>{ f.node.style.transition=''; f.speed=Math.abs(f.speed)*0.1; f.drift=0; }); }, 2500);
+}
+
+/* stars */
+function buildStars(){
+  const sf=document.getElementById('starfield');
+  if(sf.dataset.built) return; sf.dataset.built='1';
+  const ns = isMobile?40:80;
+  let svg=`<svg width="100%" height="100%" viewBox="0 0 ${W()} ${H()}" preserveAspectRatio="none">`;
+  for(let i=0;i<ns;i++){
+    const x=Math.random()*W(), y=Math.random()*H()*0.7, r=0.6+Math.random()*1.8;
+    const delay=(Math.random()*3).toFixed(2);
+    svg+=`<circle class="twinkle" cx="${x}" cy="${y}" r="${r}" fill="#fff" style="animation-delay:${delay}s"/>`;
+  }
+  svg+=`</svg>`;
+  sf.innerHTML=svg;
+}
+
+/* ============================================================
+   8. CONFETTI (canvas physics)
+   ============================================================ */
+const cc=document.getElementById('confetti'), ctx=cc.getContext('2d');
+function sizeCanvas(){ cc.width=W(); cc.height=H(); }
+sizeCanvas(); window.addEventListener('resize', sizeCanvas);
+let particles=[], confettiRunning=false;
+function burstConfetti(palette){
+  const colors=palette.concat(['#ffffff','#ffd86b']);
+  particles=[];
+  for(let i=0;i<150;i++){
+    particles.push({
+      x: W()/2 + (Math.random()-0.5)*120,
+      y: H()*0.45 + (Math.random()-0.5)*40,
+      vx:(Math.random()-0.5)*7,
+      vy:-6-Math.random()*7,
+      g:0.16+Math.random()*0.1,
+      size:5+Math.random()*7,
+      rot:Math.random()*Math.PI, vr:(Math.random()-0.5)*0.3,
+      color:colors[(Math.random()*colors.length)|0],
+      shape: Math.random()<0.5?'rect':'circ'
+    });
+  }
+  if(!confettiRunning){ confettiRunning=true; runConfetti(); }
+}
+function runConfetti(){
+  ctx.clearRect(0,0,cc.width,cc.height);
+  let alive=0;
+  for(const p of particles){
+    p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.vx*=0.99;
+    if(p.y < H()+30) alive++;
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=p.color;
+    if(p.shape==='rect') ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+    else{ ctx.beginPath(); ctx.arc(0,0,p.size/2,0,7); ctx.fill(); }
+    ctx.restore();
+  }
+  if(alive>0) requestAnimationFrame(runConfetti);
+  else{ ctx.clearRect(0,0,cc.width,cc.height); confettiRunning=false; }
+}
+
+/* ============================================================
+   9. RESULT ACTIONS
+   ============================================================ */
+document.getElementById('shareBtn').addEventListener('click', ()=>{
+  const sc=document.getElementById('shareCard');
+  const r=resultType;
+  sc.innerHTML=`
+    <h3>I'm ${r.name} 🎈</h3>
+    <p class="share-traits">${r.traits.join(' · ')}</p>
+    <p>${r.desc}</p>
+    <p style="font-style:italic;color:#5a4a6a;">“${r.wisdom}”</p>
+    <p style="margin-top:8px;"><strong>I'd love:</strong> ${r.love}</p>
+    <p class="copy-hint">✦ What kind of sky traveler are you? Take the journey through the clouds.</p>`;
+  sc.classList.add('show');
+  const text=`I'm ${r.name} 🎈\n${r.traits.join(' · ')}\n\n${r.desc}\n\n“${r.wisdom}”\nI'd love: ${r.love}\n\nWhat kind of sky traveler are you?`;
+  if(navigator.clipboard){ navigator.clipboard.writeText(text).then(()=>{
+    const h=sc.querySelector('.copy-hint'); h.textContent='✦ Copied to your clipboard — share it with the sky!';
+  }).catch(()=>{}); }
+  sc.scrollIntoView({behavior:'smooth',block:'nearest'});
+});
+
+document.getElementById('allTypesBtn').addEventListener('click', ()=>{
+  const at=document.getElementById('allTypes');
+  const grid=document.getElementById('typeGrid');
+  if(!grid.dataset.built){
+    grid.dataset.built='1';
+    TYPE_ORDER.forEach(k=>{
+      const r=TYPES[k];
+      const card=document.createElement('div'); card.className='type-card';
+      card.innerHTML = resultBalloonSVG(r.palette).replace('viewBox="0 0 200 280"','viewBox="0 0 200 280" width="88" height="120"')
+        + `<h3>${r.name}</h3><p>${r.traits.slice(0,3).join(' · ')}</p>`;
+      grid.appendChild(card);
+    });
+  }
+  at.classList.toggle('show');
+  if(at.classList.contains('show')) at.scrollIntoView({behavior:'smooth'});
+});
+
+document.getElementById('flyAgainBtn').addEventListener('click', ()=>{
+  TYPE_ORDER.forEach(t=>scores[t]=0);
+  moodTotals.calm=moodTotals.adventure=moodTotals.dreamy=0;
+  qIndex=0; resultType=null; launched=false; slide=0; lanternStage=false;
+  updateMood(); updateSkyTemperature(0);
+  document.getElementById('risingBalloon').classList.remove('up');
+  document.getElementById('risingText').classList.remove('show');
+  document.getElementById('resultDesc').classList.remove('show');
+  document.getElementById('wisdom').classList.remove('show');
+  document.getElementById('pairing').classList.remove('show');
+  document.getElementById('resultActions').classList.remove('show');
+  document.getElementById('shareCard').classList.remove('show');
+  document.getElementById('allTypes').classList.remove('show');
+  document.getElementById('resultTitle').textContent='';
+  document.getElementById('traitTags').innerHTML='';
+  document.getElementById('starfield').classList.remove('show');
+  slides.forEach((s,i)=>s.classList.toggle('active', i===0));
+  dots.forEach((d,i)=>d.classList.toggle('on', i===0));
+  document.getElementById('storyNext').textContent='Continue →';
+  const hero=document.getElementById('heroBalloon'); hero.classList.remove('launch');
+  hide(sResult); hide(sIntro); hide(sQuiz); show(sLanding);
+  window.scrollTo({top:0});
+});
+
+/* ============================================================
+   10. INIT
+   ============================================================ */
+buildSky();
+updateMood();
+requestAnimationFrame(tick);
+let rzT; window.addEventListener('resize', ()=>{ clearTimeout(rzT); rzT=setTimeout(buildSky, 400); });
+</script>
+</body>
+</html>

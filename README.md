@@ -20,29 +20,4 @@ balloons, paper planes, kites, glowing sky lanterns, and flocks of birds.
 
 
 ## Built with
-
 - **HTML, CSS, and vanilla JavaScript** 
-- Typography: [Playfair Display](https://fonts.google.com/specimen/Playfair+Display) and
-  [Inter](https://fonts.google.com/specimen/Inter) from Google Fonts.
-
-```bash
-# clone, then either open index.html directly...
-open index.html
-
-# ...or serve it locally
-python -m http.server 8000
-# then visit http://localhost:8000
-```
-
-## Structure
-
-```
-.
-├── index.html    # the entire website (HTML + CSS + JS, all in one file)
-├── poster.svg    # the promo poster shown above
-└── README.md
-```
-
----
-
-<p align="center"><em>Made with clouds, code &amp; a little wonder. ☁︎</em></p>
